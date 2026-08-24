@@ -1,15 +1,14 @@
 """
-Scratch copy kept in the Flask repo for reference — the real file
-runs inside the Frappe app at apps/ksc_ops/ksc_ops/setup_server_script.py,
-executed via:
-
-    bench --site ksc.localhost execute ksc_ops.setup_server_script.execute
+setup_server_script.py
 
 Creates a Server Script on Collection Run (Before Save) that ports the
-SLA-breach logic from collection_tracker.py's complete_run() into real
-ERPNext: same SLA_MINUTES thresholds, same "tightest window across the
-run's products" rule, now running server-side on every save instead of
-in a Flask route.
+SLA-breach logic from collection_tracker.py's complete_run() — in the
+Flask prototype (github.com/cowinoochieng-web/ksc-collection-tracker)
+— into real ERPNext: same SLA_MINUTES thresholds, same "tightest
+window across the run's products" rule, now running server-side on
+every save instead of in a Flask route.
+
+    bench --site ksc.localhost execute ksc_ops.setup_server_script.execute
 """
 
 import frappe

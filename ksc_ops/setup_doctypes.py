@@ -1,13 +1,17 @@
 """
-Scratch copy kept in the Flask repo for reference/history — the real
-file that runs lives inside the Frappe app at
-apps/ksc_ops/ksc_ops/setup_doctypes.py and is executed via:
-
-    bench --site ksc.localhost execute ksc_ops.setup_doctypes.execute
+setup_doctypes.py
 
 Defines the five KSC Operations doctypes as real Frappe DocTypes
-(Station, Farmer, Vehicle, Collection Item, Collection Run), mirroring
-the SQLite schema in db.py from the Flask prototype.
+(Station, Farmer, KSC Vehicle, Collection Item, Collection Run),
+porting the SQLite schema in db.py from the Flask prototype
+(github.com/cowinoochieng-web/ksc-collection-tracker) into ERPNext.
+
+Run once against a site with developer_mode enabled, so the DocType
+records this creates are auto-exported to the .json/.py/.js files
+under ksc_ops/ksc_operations/doctype/ — those files, not this script,
+are what actually ships with the app:
+
+    bench --site ksc.localhost execute ksc_ops.setup_doctypes.execute
 """
 
 import frappe
