@@ -4,8 +4,7 @@ A custom Frappe app that ports the [First-Mile Collection & Fleet
 Dispatch Tracker](https://github.com/cowinoochieng-web/ksc-collection-tracker)
 — a standalone Flask/SQLite prototype built to understand Kisii Smart
 Community's operational problem — into real ERPNext doctypes, on the
-actual framework the org's IT & Systems Developer role is built
-around.
+actual framework.
 
 ## Why this exists alongside the Flask prototype
 
