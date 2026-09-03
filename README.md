@@ -16,6 +16,26 @@ the other half: the same domain, rebuilt as customised DocTypes,
 fields, and a server-side script inside a real bench, to close that
 gap with working code instead of a "self-directed, in progress" note.
 
+## Screenshots
+
+A Collection Run that breached its SLA — real doctype form, real data:
+
+![Collection Run form showing an SLA Breach](screenshots/collection_run.jpg)
+
+The SLA-check logic as an actual Server Script inside ERPNext, not a Flask route:
+
+![KSC Collection Run SLA Check server script](screenshots/server_script.jpg)
+
+## Technologies used
+
+| Layer | Choice | Why |
+|---|---|---|
+| Framework | Frappe `version-16` / ERPNext `version-16` | The actual framework a Frappe-stack IT/systems role runs on, not a from-scratch imitation of it |
+| Language | Python 3.14 | Matches the bench's pinned runtime |
+| Frontend | Frappe's desk UI, Node 24 build tooling | Standard Frappe doctype forms/list views — no custom frontend was built, since the point was proving doctype/server-script fluency, not rebuilding the desk UI |
+| Data | MariaDB (via bench), Redis (cache/queue) | Frappe's standard stack, run as systemd services |
+| Dev environment | WSL2 Ubuntu, pyenv, nvm | Local bench for development and this README's screenshots |
+
 ## What's in it
 
 - **Station** — a first-mile collection hub (name, county, coordinates).
@@ -53,6 +73,50 @@ bench --site your-site install-app ksc_ops
 
 Built and tested against Frappe `version-16` / ERPNext `version-16`,
 Python 3.14, Node 24, on a local WSL2 Ubuntu bench.
+
+## Challenges encountered
+
+Renaming the vehicle doctype turned out to be the real lesson in this
+build. It started life as `Vehicle`, which collides with a doctype
+ERPNext's own Assets module already owns — installing broke in a way
+that made the naming conflict obvious. Fixing it wasn't a single
+rename:
+
+- **`fix_vehicle.py`** deleted the stale `Vehicle` doctype and
+  re-exported it correctly as `KSC Vehicle` under the `KSC Operations`
+  module.
+- **`fix_collection_run_link.py`** then had to separately correct
+  Collection Run's `vehicle` field, whose Link target was still
+  pointing at the old doctype name — renaming a doctype in Frappe
+  doesn't cascade to every field that references it by name.
+- **`fix_server_script.py`** corrected the Server Script's body after
+  an earlier version existed but wasn't actually evaluating the SLA
+  logic correctly — it took deliberately seeding one in-SLA and one
+  breaching run and checking the *actual* resulting status, not just
+  confirming the script existed, to catch it.
+
+Those three scripts aren't in the repo (they were one-off fixes run
+via `bench execute` and cleaned up after), but the doctype/field
+structure they corrected is what ships today.
+
+## What I learned
+
+- **A doctype name is a public API the moment anything links to it.**
+  The `Vehicle` → `KSC Vehicle` rename touched more than the doctype
+  itself — every Link field pointing at the old name needed a
+  follow-up fix. Worth checking a proposed doctype name against core
+  ERPNext modules *before* building fields on top of it, not after.
+- **"The script exists" and "the script works" are different claims.**
+  The SLA Server Script's first version was present and enabled but
+  wasn't producing correct output — only caught by seeding a
+  deliberately-breaching run and checking its actual status field,
+  not by confirming the script saved without error.
+- **Frappe's server scripts are a legitimate place to port real
+  business logic**, not just a scripting toy — the same
+  `SLA_MINUTES`/tightest-window logic from the Flask prototype's
+  Python function ports directly into a `Before Save` script with
+  almost no translation, which says something about how close
+  Frappe's scripting model is to plain Python.
 
 ## What I'd build next with real access
 
