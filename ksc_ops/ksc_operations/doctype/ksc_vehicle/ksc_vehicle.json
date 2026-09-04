@@ -11,7 +11,8 @@
   "plate_or_tag",
   "traccar_device_id",
   "column_break_vehicle",
-  "home_station"
+  "home_station",
+  "default_driver"
  ],
  "fields": [
   {
@@ -39,6 +40,13 @@
    "label": "Home Station",
    "options": "Station",
    "reqd": 1
+  },
+  {
+   "fieldname": "default_driver",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Default Driver",
+   "options": "Employee"
   }
  ],
  "grid_page_length": 50,
