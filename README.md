@@ -4,7 +4,8 @@ A custom Frappe app that ports the [First-Mile Collection & Fleet
 Dispatch Tracker](https://github.com/cowinoochieng-web/ksc-collection-tracker)
 — a standalone Flask/SQLite prototype built to understand Kisii Smart
 Community's operational problem — into real ERPNext doctypes, on the
-actual framework.
+actual framework, and bridges the two systems together via a
+whitelisted REST API.
 
 ## Why this exists alongside the Flask prototype
 
@@ -13,8 +14,11 @@ skill set. It doesn't prove ERPNext/Frappe development specifically,
 because it isn't ERPNext — it's a from-scratch tool designed to be
 *easy to demo* without a provisioned Frappe/MariaDB stack. This app is
 the other half: the same domain, rebuilt as customised DocTypes,
-fields, and a server-side script inside a real bench, to close that
-gap with working code instead of a "self-directed, in progress" note.
+fields, and server-side scripts inside a real bench, to close that gap
+with working code instead of a "self-directed, in progress" note — and
+the two now actually talk to each other (see
+[How it connects to the Flask dashboard](#how-it-connects-to-the-flask-dashboard)),
+rather than sitting side by side as disconnected demos.
 
 ## Screenshots
 
@@ -31,9 +35,11 @@ The SLA-check logic as an actual Server Script inside ERPNext, not a Flask route
 | Layer | Choice | Why |
 |---|---|---|
 | Framework | Frappe `version-16` / ERPNext `version-16` | The actual framework a Frappe-stack IT/systems role runs on, not a from-scratch imitation of it |
+| HR | Frappe HR (`hrms`) | Employee-process doctypes (Attendance, Leave, Shift) were split out of core ERPNext into this separate app from v15+ — installed to link drivers to Collection Runs and enforce leave-aware scheduling |
 | Language | Python 3.14 | Matches the bench's pinned runtime |
 | Frontend | Frappe's desk UI, Node 24 build tooling | Standard Frappe doctype forms/list views — no custom frontend was built, since the point was proving doctype/server-script fluency, not rebuilding the desk UI |
 | Data | MariaDB (via bench), Redis (cache/queue) | Frappe's standard stack, run as systemd services |
+| Integration | Whitelisted REST API (`ksc_ops/api.py`), Frappe API key/secret auth, least-privilege role | Lets the companion Flask dashboard pull live data from this instance — see below |
 | Dev environment | WSL2 Ubuntu, pyenv, nvm | Local bench for development and this README's screenshots |
 
 ## What's in it
@@ -42,13 +48,14 @@ The SLA-check logic as an actual Server Script inside ERPNext, not a Flask route
   Maps 1:1 to `hubs` in the Flask prototype's `db.py`.
 - **Farmer** — name, phone, home station, value chain (Dairy / Banana
   / Vegetable).
-- **KSC Vehicle** — plate/tag, Traccar device ID, home station. Named
-  `KSC Vehicle` rather than `Vehicle` since ERPNext's Assets module
-  already owns that name.
+- **KSC Vehicle** — plate/tag, Traccar device ID, home station, and a
+  default driver (Link → Employee). Named `KSC Vehicle` rather than
+  `Vehicle` since ERPNext's Assets module already owns that name.
 - **Collection Run** — a vehicle dispatched from a station, with a
   child table of **Collection Item** rows (farmer, product, quantity,
-  unit), start/delivery timestamps, and a status field (In Progress /
-  Delivered / SLA Breach).
+  unit), start/delivery timestamps, a driver (auto-fetched from the
+  vehicle's default driver, editable for substitutions), and a status
+  field (In Progress / Delivered / SLA Breach).
 - **Server Script — "KSC Collection Run SLA Check"** (`Before Save` on
   Collection Run) — ports `collection_tracker.py`'s `complete_run()`
   logic directly: once a run has both a start and delivery time, it
@@ -56,12 +63,37 @@ The SLA-check logic as an actual Server Script inside ERPNext, not a Flask route
   products actually collected (same `SLA_MINUTES` thresholds: Dairy
   120, Vegetable 300, Banana 480), and sets the status accordingly —
   now running inside ERPNext on every save, not in a Flask route.
+- **HR integration** — Employee gets a Home Station link and four
+  seeded Designations (E-Trike Pilot, Station Attendant, Vehicle
+  Technician, Dispatch Supervisor); every E-Trike Pilot is assigned a
+  Leave policy (Annual/Sick/Compassionate), a "Field Collection Shift"
+  with auto-attendance, and a Kenya public holiday list.
+- **Server Script — "KSC Driver Leave Check"** (`Before Save` on
+  Collection Run) — blocks saving a run if its assigned driver has an
+  Approved Leave Application covering the run's date, closing the loop
+  between HR leave records and operational scheduling.
 
-`ksc_ops/setup_doctypes.py` and `ksc_ops/setup_server_script.py` are
-the scripts that created all of the above — kept in the repo as a
-record of *how* it was built, since with `developer_mode` on, running
-them is what generated the actual `.json`/`.py`/`.js` files under
-`ksc_ops/ksc_operations/doctype/` that ship with the app.
+`ksc_ops/setup_doctypes.py`, `ksc_ops/setup_server_script.py`, and the
+patches under `ksc_ops/patches/` are what created the above — kept in
+the repo as a record of *how* it was built, since with `developer_mode`
+on, running them is what generated the actual `.json`/`.py`/`.js` files
+that ship with the app.
+
+## How it connects to the Flask dashboard
+
+`ksc_ops/api.py` exposes three read-only, whitelisted REST methods —
+`ping`, `get_summary`, `get_fleet_status` — that mirror the Flask
+prototype's own `dashboard_data.py` response shapes, so its
+**ERPNext Sync** page can pull live counts and fleet status straight
+from this instance instead of the two systems living side by side.
+
+Access is scoped, not blanket: a dedicated `KSC API Reader` role
+(`desk_access=0`, read-only on exactly the four doctypes above) is
+granted to a dedicated integration user, authenticated with a Frappe
+API key/secret — never the Administrator account. All three methods
+use `frappe.get_list()`, not `frappe.get_all()`, specifically so that
+role is actually enforced rather than bypassed (see
+[Challenges encountered](#challenges-encountered)).
 
 ## Installation
 
@@ -99,6 +131,18 @@ Those three scripts aren't in the repo (they were one-off fixes run
 via `bench execute` and cleaned up after), but the doctype/field
 structure they corrected is what ships today.
 
+**A permission bypass in the API bridge, caught only by testing the
+restricted role, not just writing it.** `ksc_ops/api.py` originally
+used `frappe.get_all()`, which silently sets `ignore_permissions=True`
+internally — the opposite of what a "least-privilege API reader" is
+supposed to mean. It wasn't obvious from reading the code; it only
+showed up when I actually logged in as the restricted integration user
+and confirmed a doctype outside its role (`Employee`) should raise
+`PermissionError` — it didn't. Switching every call to
+`frappe.get_list()` (which does enforce permissions) fixed it, and I
+re-verified the `PermissionError` actually fires before wiring the
+Flask side up to it.
+
 ## What I learned
 
 - **A doctype name is a public API the moment anything links to it.**
@@ -110,7 +154,8 @@ structure they corrected is what ships today.
   The SLA Server Script's first version was present and enabled but
   wasn't producing correct output — only caught by seeding a
   deliberately-breaching run and checking its actual status field,
-  not by confirming the script saved without error.
+  not by confirming the script saved without error. The same lesson
+  showed up again with the API bridge's permission bug above.
 - **Frappe's server scripts are a legitimate place to port real
   business logic**, not just a scripting toy — the same
   `SLA_MINUTES`/tightest-window logic from the Flask prototype's
@@ -124,10 +169,14 @@ structure they corrected is what ships today.
   in-transit → received at hub) alongside the automatic SLA check,
   matching how a real ops team would actually move a run through
   hand-offs.
-- Whitelisted API endpoints (`@frappe.whitelist()`) exposing Collection
-  Run creation to the Traccar-integrated fleet dashboard, so the two
-  projects talk to each other instead of living side by side.
-- Fixtures for the Server Script (and Workflow, once added) exported
-  via `bench --site your-site export-fixtures`, so a fresh install
-  gets them automatically instead of needing the setup scripts run
-  by hand.
+- Fixtures for the Server Scripts, doctypes, and HR seed data, exported
+  via `bench --site your-site export-fixtures`, so a fresh install gets
+  them automatically instead of needing the setup scripts run by hand.
+- Extend the API bridge past read-only status: a whitelisted endpoint
+  for *creating* a Collection Run from the Flask dashboard's own
+  data-entry form, so a field agent's logged pickup lands directly in
+  ERPNext instead of needing a separate entry step.
+- A driver SLA-performance report joining Collection Run history to
+  Employee, and Training/certification records (e-trike operation,
+  battery safety, cold-chain handling) — natural next steps on top of
+  the HR integration already in place.
