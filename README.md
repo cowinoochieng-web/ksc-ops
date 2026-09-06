@@ -20,6 +20,20 @@ the two now actually talk to each other (see
 [How it connects to the Flask dashboard](#how-it-connects-to-the-flask-dashboard)),
 rather than sitting side by side as disconnected demos.
 
+## Navigation
+
+Fleet doctypes (`KSC Operations` module) and HR doctypes (`hrms`) ship
+in separate Frappe modules by default, which by default means separate,
+scattered Workspaces in the desk sidebar — six of them for HR alone
+(Leaves, Shift & Attendance, Recruitment, Tenure, Performance, HR
+Setup). A single custom **Fleet & HR** Workspace
+(`ksc_operations/workspace/fleet_&_hr/`) consolidates the doctypes this
+project actually touches — Station, Farmer, KSC Vehicle, Collection Run
+on one side, Employee, Designation, Attendance, Leave Application,
+Shift Type, and Holiday List on the other — into one sidebar entry, so
+demoing the whole domain doesn't mean hopping between unrelated default
+workspaces.
+
 ## Screenshots
 
 A Collection Run that breached its SLA — real doctype form, real data:
