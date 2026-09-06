@@ -1,7 +1,7 @@
 {
  "app": "ksc_ops",
  "charts": [],
- "content": "[{\"id\": \"hdr1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Fleet Tracking</b></span>\", \"col\": 12}}, {\"id\": \"card1\", \"type\": \"card\", \"data\": {\"card_name\": \"Fleet Tracking\", \"col\": 4}}, {\"id\": \"spacer1\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"hdr2\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>HR &amp; Workforce</b></span>\", \"col\": 12}}, {\"id\": \"card2\", \"type\": \"card\", \"data\": {\"card_name\": \"HR & Workforce\", \"col\": 4}}]",
+ "content": "[{\"id\": \"hdr1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Fleet Tracking</b></span>\", \"col\": 12}}, {\"id\": \"card1\", \"type\": \"card\", \"data\": {\"card_name\": \"Fleet Tracking\", \"col\": 4}}, {\"id\": \"spacer1\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"hdr2\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>HR &amp; Workforce</b></span>\", \"col\": 12}}, {\"id\": \"card2\", \"type\": \"card\", \"data\": {\"card_name\": \"HR & Workforce\", \"col\": 4}}, {\"id\": \"e2bbfbc87f\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ops Assistant\", \"col\": 4}}]",
  "creation": "2026-09-06 07:01:41.616783",
  "custom_blocks": [],
  "docstatus": 0,
@@ -134,7 +134,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-09-06 07:01:41.616783",
+ "modified": "2026-09-06 08:01:02.814798",
  "modified_by": "Administrator",
  "module": "KSC Operations",
  "name": "Fleet & HR",
@@ -145,7 +145,15 @@
  "quick_lists": [],
  "roles": [],
  "sequence_id": 1.0,
- "shortcuts": [],
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "",
+   "label": "Ops Assistant",
+   "link_to": "ops-assistant",
+   "type": "Page"
+  }
+ ],
  "title": "Fleet & HR",
  "type": "Workspace"
 }

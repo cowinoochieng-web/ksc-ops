@@ -54,6 +54,7 @@ The SLA-check logic as an actual Server Script inside ERPNext, not a Flask route
 | Frontend | Frappe's desk UI, Node 24 build tooling | Standard Frappe doctype forms/list views — no custom frontend was built, since the point was proving doctype/server-script fluency, not rebuilding the desk UI |
 | Data | MariaDB (via bench), Redis (cache/queue) | Frappe's standard stack, run as systemd services |
 | Integration | Whitelisted REST API (`ksc_ops/api.py`), Frappe API key/secret auth, least-privilege role | Lets the companion Flask dashboard pull live data from this instance — see below |
+| AI assistant | Provider-agnostic LLM client (`llm_client.py`), OpenAI/Anthropic REST, mock fallback | A read-only Q&A Page grounded in this app's own data — see [Ops Assistant](#ops-assistant-read-only-ai-qa) |
 | Dev environment | WSL2 Ubuntu, pyenv, nvm | Local bench for development and this README's screenshots |
 
 ## What's in it
@@ -108,6 +109,35 @@ API key/secret — never the Administrator account. All three methods
 use `frappe.get_list()`, not `frappe.get_all()`, specifically so that
 role is actually enforced rather than bypassed (see
 [Challenges encountered](#challenges-encountered)).
+
+## Ops Assistant (read-only AI Q&A)
+
+A chat-style desk Page (**Ops Assistant** — also a shortcut on the
+**Fleet & HR** Workspace above) answers natural-language questions
+grounded in this app's own data: "which vehicles breached SLA this
+week?", "who's on leave today?", "what vehicles do we have?". It is
+strictly **read-only** — no doctype writes, no autonomous actions,
+just Q&A over a context snapshot pulled with `frappe.get_list()` (not
+`get_all()` — same enforcement rule as the API bridge above).
+
+The LLM backend is **provider-agnostic** (`llm_client.py`): `OpenAIClient`
+and `AnthropicClient` both call their vendor's plain REST API directly
+(no SDK dependency), selected via `frappe.conf` — Frappe's own config
+convention, set with `bench set-config`, never a `.env` file:
+
+```bash
+bench --site your-site set-config ksc_llm_provider openai   # or anthropic
+bench --site your-site set-config ksc_llm_api_key sk-...
+```
+
+With no key configured — the state of a fresh clone — it falls back to
+`MockLLMClient`: not a generic stub, but a deterministic, keyword-routed
+responder that templates answers from the **same real context data** a
+live model would see (actual Collection Run statuses, fleet roster,
+today's approved leave), so the demo is grounded in real data even
+before any API key exists. Every response is honestly labeled live vs.
+mock in the UI, the same "don't imply a connection that isn't there"
+principle as the ERPNext Sync page's `erp_live` flag on the Flask side.
 
 ## Installation
 
